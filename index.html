@@ -6,67 +6,96 @@
     <style>
         body { background: #000; color: #0f0; font-family: monospace; padding: 20px; line-height: 1.5; }
         .terminal { border: 2px solid #0f0; padding: 20px; box-shadow: 0 0 10px #0f0; }
-        input { background: #000; border: 1px solid #0f0; color: #f0f; padding: 10px; font-family: monospace; }
+        input { background: #000; border: 1px solid #0f0; color: #f0f; padding: 10px; font-family: monospace; width: 120px; }
         button { background: #0f0; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; margin: 5px; }
-        button:hover { background: #fff; }
-        #status { color: #ff0; margin: 10px 0; }
-        #output { margin-top: 20px; color: #0ff; max-height: 300px; overflow-y: auto; border-top: 1px dashed #0f0; }
+        button:disabled { background: #333; color: #666; }
+        #p-cont { width: 100%; border: 1px solid #0f0; height: 10px; margin: 15px 0; display: none; }
+        #p-bar { width: 0%; height: 100%; background: #f0f; }
+        #status { color: #ff0; margin: 10px 0; font-weight: bold; }
+        #output { margin-top: 20px; color: #0ff; max-height: 200px; overflow-y: auto; border-top: 1px dashed #0f0; font-size: 11px; white-space: pre; }
     </style>
 </head>
 <body>
     <div class="terminal">
-        <h1>NSR SYSTEM</h1>
-        <p>> STATUS: RUNNING ON  LOGIC</p>
-        
+        <h1>NSR SYSTEM v4.0</h1>
+        <p>> STATUS: MEMORY_GUARD_ACTIVE</p>
         <div>
             CHRS: <input type="text" id="chars" value="28, 32">
-            DPTH: <input type="number" id="depth" value="7" style="width: 50px;">
+            DPTH: <input type="number" id="depth" value="7">
         </div>
-        
-        <button onclick="generateNSR()">RUN NSR</button>
-        <button onclick="downloadNSR()">EXPORT .TXT</button>
-
+        <button id="runBtn" onclick="runNSR()">RUN NSR</button>
+        <button id="dlBtn" onclick="downloadNSR()" disabled>EXPORT .TXT</button>
+        <div id="p-cont"><div id="p-bar"></div></div>
         <div id="status">READY_</div>
         <div id="output"></div>
     </div>
 
     <script>
-        let dataStore = "";
+        let res = [];
+        let aborted = false;
 
-        function generateNSR() {
-            const status = document.getElementById('status');
-            const output = document.getElementById('output');
-            const backbone = document.getElementById('chars').value.split(',').map(s => s.trim());
-            const depth = parseInt(document.getElementById('depth').value);
+        async function runNSR() {
+            const b = document.getElementById('chars').value.split(',').map(s => s.trim()).filter(s => s !== "");
+            const d = parseInt(document.getElementById('depth').value);
+            const s = document.getElementById('status');
+            const pr = document.getElementById('p-bar');
+            const pc = document.getElementById('p-cont');
+            const rb = document.getElementById('runBtn');
+            const out = document.getElementById('output');
+
+            res = [];
+            aborted = false;
+            const t = Math.pow(b.length, d);
+            rb.disabled = true;
+            pc.style.display = "block";
+            s.innerText = "EXECUTING...";
             
-            status.innerText = "BRANCHING...";
-            dataStore = "";
-            let count = 0;
+            const start = performance.now();
+            let stack = [{c: "", l: 0}];
 
-            function branch(current, level) {
-                if (level === depth) {
-                    dataStore += current + "\n";
-                    count++;
-                    return;
+            while (stack.length > 0) {
+                let node = stack.pop();
+                let c = node.c;
+                let l = node.l;
+
+                if (l === d) {
+                    res.push(c);
+                    if (res.length % 50000 === 0) {
+                        const estMem = (res.length * (d + 2)) / (1024 * 1024);
+                        if (estMem > 500) {
+                            aborted = true;
+                            s.innerText = "HALTED: MEMORY LIMIT (500MB) EXCEEDED.";
+                            break;
+                        }
+                        pr.style.width = (res.length / t * 100) + "%";
+                        await new Promise(r => setTimeout(r, 0));
+                    }
+                    continue;
                 }
-                for (let i = 0; i < backbone.length; i++) {
-                    branch(current + backbone[i], level + 1);
+
+                for (let i = b.length - 1; i >= 0; i--) {
+                    stack.push({c: c + b[i], l: l + 1});
                 }
             }
 
-            branch("", 0);
-            output.innerText = dataStore.substring(0, 2000) + "\n... (View full list in download)";
-            status.innerText = "SUCCESS: " + count + " COMBINATIONS MAPPED.";
+            if (!aborted) {
+                const end = performance.now();
+                s.innerText = `DONE: ${res.length} IN ${((end - start) / 1000).toFixed(2)}s`;
+                out.innerText = res.slice(0, 500).join("\n") + "\n...";
+                document.getElementById('dlBtn').disabled = false;
+                pr.style.width = "100%";
+            }
+            rb.disabled = false;
         }
 
         function downloadNSR() {
-            if (!dataStore) return;
-            const blob = new Blob([dataStore], { type: 'text/plain' });
-            const link = document.createElement('a');
-            link.href = URL.createObjectURL(blob);
-            link.download = 'nsr_sequence.txt';
-            link.click();
-            URL.revokeObjectURL(link.href);
+            const blob = new Blob([res.join("\n")], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'nsr_data.txt';
+            a.click();
+            URL.revokeObjectURL(url);
         }
     </script>
 </body>
