@@ -4,36 +4,49 @@
     <meta charset="UTF-8">
     <title>NSR - Notional Sequence Rule</title>
     <style>
-        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
-        input { background: #111; border: 1px solid #0f0; color: #0f0; padding: 10px; width: 300px; }
-        button { background: #0f0; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
-        button:hover { background: #0a0; }
-        #output { margin-top: 20px; white-space: pre; border-top: 1px solid #333; padding-top: 10px; max-height: 400px; overflow-y: auto; }
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; line-height: 1.5; }
+        .terminal { border: 2px solid #0f0; padding: 20px; box-shadow: 0 0 10px #0f0; }
+        input { background: #000; border: 1px solid #0f0; color: #f0f; padding: 10px; font-family: monospace; }
+        button { background: #0f0; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; margin: 5px; }
+        button:hover { background: #fff; }
+        #status { color: #ff0; margin: 10px 0; }
+        #output { margin-top: 20px; color: #0ff; max-height: 300px; overflow-y: auto; border-top: 1px dashed #0f0; }
     </style>
 </head>
 <body>
-    <h1>NSR GENERATOR v1.0</h1>
-    <p>Notational Sequence Rule.</p>
-    
-    <input type="text" id="chars" placeholder="e.g. 28, 32, -">
-    <input type="number" id="depth" value="7" style="width: 50px;">
-    <button onclick="runNSR()">BRANCH SEQUENCE</button>
-    <button onclick="downloadNSR()">DOWNLOAD .TXT</button>
+    <div class="terminal">
+        <h1>NSR SYSTEM</h1>
+        <p>> STATUS: RUNNING ON  LOGIC</p>
+        
+        <div>
+            CHRS: <input type="text" id="chars" value="28, 32">
+            DPTH: <input type="number" id="depth" value="7" style="width: 50px;">
+        </div>
+        
+        <button onclick="generateNSR()">RUN NSR</button>
+        <button onclick="downloadNSR()">EXPORT .TXT</button>
 
-    <div id="output"></div>
+        <div id="status">READY_</div>
+        <div id="output"></div>
+    </div>
 
     <script>
-        let results = [];
+        let dataStore = "";
 
-        function runNSR() {
-            const input = document.getElementById('chars').value;
+        function generateNSR() {
+            const status = document.getElementById('status');
+            const output = document.getElementById('output');
+            const backbone = document.getElementById('chars').value.split(',').map(s => s.trim());
             const depth = parseInt(document.getElementById('depth').value);
-            const backbone = input.split(',').map(s => s.trim());
-            results = [];
+            
+            status.innerText = "BRANCHING...";
+            dataStore = "";
+            let count = 0;
 
             function branch(current, level) {
                 if (level === depth) {
-                    results.push(current);
+                    dataStore += current + "\n";
+                    count++;
                     return;
                 }
                 for (let i = 0; i < backbone.length; i++) {
@@ -42,17 +55,18 @@
             }
 
             branch("", 0);
-            document.getElementById('output').innerText = results.join('\n');
+            output.innerText = dataStore.substring(0, 2000) + "\n... (View full list in download)";
+            status.innerText = "SUCCESS: " + count + " COMBINATIONS MAPPED.";
         }
 
         function downloadNSR() {
-            if (results.length === 0) return;
-            const blob = new Blob([results.join('\n')], { type: 'text/plain' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'nsr_crack.txt';
-            a.click();
+            if (!dataStore) return;
+            const blob = new Blob([dataStore], { type: 'text/plain' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'nsr_sequence.txt';
+            link.click();
+            URL.revokeObjectURL(link.href);
         }
     </script>
 </body>
