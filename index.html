@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NSR - Notional Sequence Rule</title>
+    <style>
+        body { background: #000; color: #0f0; font-family: monospace; padding: 20px; }
+        input { background: #111; border: 1px solid #0f0; color: #0f0; padding: 10px; width: 300px; }
+        button { background: #0f0; color: #000; border: none; padding: 10px 20px; cursor: pointer; font-weight: bold; }
+        button:hover { background: #0a0; }
+        #output { margin-top: 20px; white-space: pre; border-top: 1px solid #333; padding-top: 10px; max-height: 400px; overflow-y: auto; }
+    </style>
+</head>
+<body>
+    <h1>NSR GENERATOR v1.0</h1>
+    <p>Notational Sequence Rule.</p>
+    
+    <input type="text" id="chars" placeholder="e.g. 28, 32, -">
+    <input type="number" id="depth" value="7" style="width: 50px;">
+    <button onclick="runNSR()">BRANCH SEQUENCE</button>
+    <button onclick="downloadNSR()">DOWNLOAD .TXT</button>
+
+    <div id="output"></div>
+
+    <script>
+        let results = [];
+
+        function runNSR() {
+            const input = document.getElementById('chars').value;
+            const depth = parseInt(document.getElementById('depth').value);
+            const backbone = input.split(',').map(s => s.trim());
+            results = [];
+
+            function branch(current, level) {
+                if (level === depth) {
+                    results.push(current);
+                    return;
+                }
+                for (let i = 0; i < backbone.length; i++) {
+                    branch(current + backbone[i], level + 1);
+                }
+            }
+
+            branch("", 0);
+            document.getElementById('output').innerText = results.join('\n');
+        }
+
+        function downloadNSR() {
+            if (results.length === 0) return;
+            const blob = new Blob([results.join('\n')], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'nsr_crack.txt';
+            a.click();
+        }
+    </script>
+</body>
+</html>
